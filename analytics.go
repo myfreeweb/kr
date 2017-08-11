@@ -79,3 +79,27 @@ func (a Analytics) PostEventUsingPersistedTrackingID(category string, action str
 	}
 	a.PostEvent(id, category, action, label, value)
 }
+
+func (r Request) AnalyticsTag() *string {
+	if r.GitSignRequest != nil {
+		tag := r.GitSignRequest.AnalyticsTag()
+		return &tag
+	}
+	if r.SignRequest != nil {
+		tag := "signature"
+		return &tag
+	}
+	if r.CreateTeamRequest != nil {
+		tag := "create-team"
+		return &tag
+	}
+	return nil
+}
+
+func (gsr GitSignRequest) AnalyticsTag() string {
+	if gsr.Commit != nil {
+		return "git-commit-signature"
+	} else {
+		return "git-tag-signature"
+	}
+}

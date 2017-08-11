@@ -15,27 +15,31 @@ import (
 var ENCLAVE_VERSION_SUPPORTS_RSA_SHA2_256_512 = semver.MustParse("2.1.0")
 
 type Request struct {
-	RequestID      string          `json:"request_id"`
-	UnixSeconds    int64           `json:"unix_seconds"`
-	Version        semver.Version  `json:"v"`
-	SendACK        bool            `json:"a"`
-	SignRequest    *SignRequest    `json:"sign_request,omitempty"`
-	GitSignRequest *GitSignRequest `json:"git_sign_request,omitempty"`
-	MeRequest      *MeRequest      `json:"me_request,omitempty"`
-	UnpairRequest  *UnpairRequest  `json:"unpair_request,omitempty"`
+	RequestID         string             `json:"request_id"`
+	UnixSeconds       int64              `json:"unix_seconds"`
+	Version           semver.Version     `json:"v"`
+	SendACK           bool               `json:"a"`
+	SignRequest       *SignRequest       `json:"sign_request,omitempty"`
+	GitSignRequest    *GitSignRequest    `json:"git_sign_request,omitempty"`
+	MeRequest         *MeRequest         `json:"me_request,omitempty"`
+	UnpairRequest     *UnpairRequest     `json:"unpair_request,omitempty"`
+	CreateTeamRequest *CreateTeamRequest `json:"create_team_request,omitempty"`
 }
 
 func NewRequest() (request Request, err error) {
+	err = request.Prepare()
+	return
+}
+
+func (r *Request) Prepare() (err error) {
 	id, err := Rand128Base62()
 	if err != nil {
 		return
 	}
-	request = Request{
-		RequestID:   id,
-		UnixSeconds: time.Now().Unix(),
-		Version:     CURRENT_VERSION,
-		SendACK:     true,
-	}
+	r.RequestID = id
+	r.UnixSeconds = time.Now().Unix()
+	r.Version = CURRENT_VERSION
+	r.SendACK = true
 	return
 }
 
@@ -43,17 +47,42 @@ func (r Request) NotifyPrefix() string {
 	return fmt.Sprintf("[%s]", r.RequestID)
 }
 
+type RequestParameters struct {
+	AlertText string
+	Timeout   TimeoutPhases
+}
+
+func (r Request) RequestParameters(timeouts Timeouts) RequestParameters {
+	if r.SignRequest != nil {
+		return RequestParameters{
+			AlertText: "Incoming SSH request. Open Kryptonite to continue.",
+			Timeout:   timeouts.Sign,
+		}
+	}
+	if r.GitSignRequest != nil {
+		return RequestParameters{
+			AlertText: "Incoming Git request. Open Kryptonite to continue.",
+			Timeout:   timeouts.Sign,
+		}
+	}
+	return RequestParameters{
+		AlertText: "Incoming Kryptonite request. ",
+		Timeout:   timeouts.Sign,
+	}
+}
+
 type Response struct {
-	RequestID       string           `json:"request_id"`
-	Version         semver.Version   `json:"v"`
-	SignResponse    *SignResponse    `json:"sign_response,omitempty"`
-	GitSignResponse *GitSignResponse `json:"git_sign_response,omitempty"`
-	MeResponse      *MeResponse      `json:"me_response,omitempty"`
-	UnpairResponse  *UnpairResponse  `json:"unpair_response,omitempty"`
-	AckResponse     *AckResponse     `json:"ack_response,omitempty"`
-	SNSEndpointARN  *string          `json:"sns_endpoint_arn,omitempty"`
-	ApprovedUntil   *int64           `json:"approved_until,omitempty"`
-	TrackingID      *string          `json:"tracking_id,omitempty"`
+	RequestID          string              `json:"request_id"`
+	Version            semver.Version      `json:"v"`
+	SignResponse       *SignResponse       `json:"sign_response,omitempty"`
+	GitSignResponse    *GitSignResponse    `json:"git_sign_response,omitempty"`
+	MeResponse         *MeResponse         `json:"me_response,omitempty"`
+	UnpairResponse     *UnpairResponse     `json:"unpair_response,omitempty"`
+	AckResponse        *AckResponse        `json:"ack_response,omitempty"`
+	CreateTeamResponse *CreateTeamResponse `json:"create_team_response,omitempty"`
+	SNSEndpointARN     *string             `json:"sns_endpoint_arn,omitempty"`
+	ApprovedUntil      *int64              `json:"approved_until,omitempty"`
+	TrackingID         *string             `json:"tracking_id,omitempty"`
 }
 
 type SignRequest struct {
@@ -74,14 +103,6 @@ type GitSignRequest struct {
 	Commit *CommitInfo `json:"commit,omitempty"`
 	Tag    *TagInfo    `json:"tag,omitempty"`
 	UserId string      `json:"user_id"`
-}
-
-func (gsr GitSignRequest) AnalyticsTag() string {
-	if gsr.Commit != nil {
-		return "git-commit-signature"
-	} else {
-		return "git-tag-signature"
-	}
 }
 
 type GitSignResponse struct {
@@ -157,3 +178,13 @@ type UnpairRequest struct{}
 type UnpairResponse struct{}
 
 type AckResponse struct{}
+
+func (r Response) Error() *string {
+	if r.GitSignResponse != nil {
+		return r.GitSignResponse.Error
+	}
+	if r.SignResponse != nil {
+		return r.SignResponse.Error
+	}
+	return nil
+}
