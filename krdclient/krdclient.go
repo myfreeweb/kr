@@ -13,6 +13,8 @@ import (
 	"github.com/kryptco/kr"
 )
 
+var ErrOldKrdRunning = fmt.Errorf(kr.Red("An old version of krd is still running. Please run " + kr.Cyan("kr restart") + kr.Red(" and try again.")))
+
 func IsLatestKrdRunning() (isRunning bool, err error) {
 	version, err := RequestKrdVersion()
 	if err != nil {
@@ -181,6 +183,30 @@ func RequestGitSignature(request kr.Request) (response kr.GitSignResponse, err e
 	}
 	defer daemonConn.Close()
 	response, err = RequestGitSignatureOver(request, daemonConn)
+	return
+}
+
+func Request(request kr.Request) (response kr.Response, err error) {
+	latestRunning, err := IsLatestKrdRunning()
+	if err != nil {
+		return
+	}
+	if !latestRunning {
+		err = ErrOldKrdRunning
+		return
+	}
+	unixFile, err := kr.KrDirFile(kr.DAEMON_SOCKET_FILENAME)
+	if err != nil {
+		err = kr.ErrConnectingToDaemon
+		return
+	}
+	daemonConn, err := kr.DaemonDialWithTimeout(unixFile)
+	if err != nil {
+		err = kr.ErrConnectingToDaemon
+		return
+	}
+	defer daemonConn.Close()
+	response, err = makeRequestWithJsonResponse(daemonConn, request)
 	return
 }
 
