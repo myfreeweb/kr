@@ -4,6 +4,7 @@ OS ?= $(shell ./install/os.sh)
 
 all:
 	-mkdir -p bin
+	cd krcommand; cargo build --release
 	cd kr; go build $(GOBUILDFLAGS) -o ../bin/kr
 	cd krd/main; go build $(GOBUILDFLAGS) -o ../../bin/krd
 	cd pkcs11shim; make; cp target/release/kr-pkcs11.so ../bin/
