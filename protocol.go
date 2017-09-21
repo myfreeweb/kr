@@ -24,6 +24,7 @@ type Request struct {
 	MeRequest         *MeRequest         `json:"me_request,omitempty"`
 	UnpairRequest     *UnpairRequest     `json:"unpair_request,omitempty"`
 	CreateTeamRequest *CreateTeamRequest `json:"create_team_request,omitempty"`
+	AdminKeyRequest   *AdminKeyRequest   `json:"admin_key_request,omitempty"`
 }
 
 func NewRequest() (request Request, err error) {
@@ -83,6 +84,7 @@ type Response struct {
 	UnpairResponse     *UnpairResponse     `json:"unpair_response,omitempty"`
 	AckResponse        *AckResponse        `json:"ack_response,omitempty"`
 	CreateTeamResponse *CreateTeamResponse `json:"create_team_response,omitempty"`
+	AdminKeyResponse   *AdminKeyResponse   `json:"admin_key_response,omitempty"`
 	SNSEndpointARN     *string             `json:"sns_endpoint_arn,omitempty"`
 	ApprovedUntil      *int64              `json:"approved_until,omitempty"`
 	TrackingID         *string             `json:"tracking_id,omitempty"`
